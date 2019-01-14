@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Copyright (C) 2014 mooapp
+
+#Copyright (C) 2014 mooapp
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not 
 # use this file except in compliance with the License. A copy of the License 
@@ -12,7 +13,9 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either 
 # express or implied. See the License for the specific language governing 
 # permissions and limitations under the License.
-
+#
+#(modifications to remove amazon rds features - candreasen, 6/11/2015)
+# Fixed pg_stat_activity queries for PG 10 - candreasen, 1/14/2019
 
 ########################################
 # Initial Settings
@@ -268,7 +271,8 @@ done
 ########################################
 # psql Command
 ########################################
-PSQL_CMD="/usr/bin/psql -h $PGHOST -p $PGPORT -U $PGUSER -d $DBNAME -A -t -c"
+PGSQL_BIN="/usr/local/pgsql/bin"
+PSQL_CMD="${PGSQL_BIN}/psql -h $PGHOST -p $PGPORT -U $PGUSER -d $DBNAME -A -t -c"
 
 
 ########################################
@@ -380,7 +384,7 @@ fi
 
 # Session
 if [ $SESSION_ACTIVE -eq 1 ]; then
-    query="SELECT count(*) FROM pg_stat_activity WHERE waiting='f' AND query NOT LIKE '<IDLE%' AND datname='$DBNAME'"
+    query="SELECT count(*) FROM pg_stat_activity WHERE wait_event IS NULL AND query NOT LIKE '<IDLE%' AND datname='$DBNAME'"
     session_active=`$PSQL_CMD "$query"`
     if [ $VERBOSE -eq 1 ]; then
         echo "session_active:$session_active"
@@ -391,7 +395,7 @@ if [ $SESSION_ACTIVE -eq 1 ]; then
 fi
 
 if [ $SESSION_IDLE -eq 1 ]; then
-    query="SELECT count(*) FROM pg_stat_activity WHERE waiting='f' AND query LIKE '<IDLE%' AND datname='$DBNAME'"
+    query="SELECT count(*) FROM pg_stat_activity WHERE wait_event IS NULL AND query LIKE '<IDLE%' AND datname='$DBNAME'"
     session_idle=`$PSQL_CMD "$query"`
     if [ $VERBOSE -eq 1 ]; then
         echo "session_idle:$session_idle"
@@ -402,7 +406,7 @@ if [ $SESSION_IDLE -eq 1 ]; then
 fi
 
 if [ $SESSION_WAIT -eq 1 ]; then
-    query="SELECT count(*) FROM pg_stat_activity WHERE waiting='t' AND datname='$DBNAME'"
+    query="SELECT count(*) FROM pg_stat_activity WHERE wait_event IS NOT NULL AND datname='$DBNAME'"
     session_wait=`$PSQL_CMD "$query"`
     if [ $VERBOSE -eq 1 ]; then
         echo "session_wait:$session_wait"
@@ -669,4 +673,5 @@ fi
 
 # Write cache buffer
 writeCache
+
 
